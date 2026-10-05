@@ -34,5 +34,9 @@ class Alat:
         self.status = Status_Dipinjam
         self.transaksi_aktif = id_transaksi
 
-    def kembalian(self, kondisi):
+    def kembalikan(self, kondisi):
         self.kondisi = cek_kondisi(kondisi)
+        self.transaksi_aktif = None
+        self.status = Status_Tersedia if kondisi == Kondisi_Baik else Status_Rusak
+
+    def proses_pemeliharaan(self):
