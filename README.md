@@ -8,7 +8,7 @@ dan pengembalian alat laboratorium. Data disimpan sementara di `list`/`dict`/`se
 ## Anggota Kelompok
 | Nama | Peran utama |
 |---|---|
-| Dika | Model (`models/`), UML final |
+| Mahardika | Model (`models/`), UML final |
 | Abyan | `TransaksiService`, pengujian skenario peminjaman/pengembalian |
 | Ayun | `MahasiswaService`, `AlatService`, Tantangan A & C |
 | Adibah | `MenuCLI`, `main.py`, `LogService`, `StatistikService`, dokumentasi |
