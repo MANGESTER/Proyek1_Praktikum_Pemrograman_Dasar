@@ -40,3 +40,10 @@ class Alat:
         self.status = Status_Tersedia if kondisi == Kondisi_Baik else Status_Rusak
 
     def proses_pemeliharaan(self):
+        if self.status != Status_Pemeliharaan:
+            raise AturanBisnisError(f'Alat {self.kode} tidak sedang dalam pemeliharaan')
+        self.kondisi = Kondisi_Baik
+        self.status = Status_Tersedia
+
+    def __str__(self):
+        return f'{self.kode} | {self.nama} | {self.kategori} | Kondisi: {self.kondisi} | Status: {self.status}'
