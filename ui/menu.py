@@ -183,3 +183,4 @@ class MenuCLI:
                 print(log)
         else:
             print("LogService belum tersedia.")
+            la
