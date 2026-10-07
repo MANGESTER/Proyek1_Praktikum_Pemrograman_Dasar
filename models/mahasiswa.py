@@ -11,4 +11,4 @@ class Mahasiswa:
 
     def __str__(self):
         status = 'aktif meminjam' if self.status_aktif else 'tidak meminjam'
-        return f'{self.nim} | {self.nama} | {self.no_hp} | {status}' 
+        return f'{self.nim} | {self.nama} | {self.no_hp} | {status}'
