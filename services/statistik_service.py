@@ -18,3 +18,4 @@ class StatistikService:
         print(f"Jumlah transaksi : {self.jumlah_transaksi()}")
         print(f"Transaksi aktif  : {self.jumlah_transaksi_aktif()}")
         print(f"Transaksi selesai: {self.jumlah_transaksi_selesai()}")
+    

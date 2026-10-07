@@ -15,4 +15,4 @@ class LogService:
 
         print("\n=== LOG AKTIVITAS ===")
         for i, log in enumerate(self._logs, 1):
-            print(f"{i}. {log}")
+            print(f"{i}. {log}") 
