@@ -33,3 +33,25 @@ class Transaksi:
 
     def belum_kembali(self):
         return [k for k, d in self.items.items() if not d.sudah_dikembalikan]
+
+    def validasi_pengembalian(self, kode, kondisi, tanggal):
+        detail = self.items.get(kode)
+
+        if detail is None:
+            raise DataTidakDitemukanError(f'Alat {kode} tidak ada diriwayat transaksi {self.id}.')
+        if detail.sudah_dikembalikan:
+            raise AturanBisnisError(f'Alat {kode} sudah dikembalikan sebelumnya.')
+
+        cek_kondisi(kondisi)
+        if tanggal < self.tanggal_pinjam:
+            raise AturanBisnisError('Tanggal pengembalian tidak boleh sebelum tanggal peminjaman.')
+
+    def catat_pengembalian(self, kode, kondisi, tanggal):
+        self.validasi_pengembalian(kode, kondisi, tanggal)
+        detail = self.items[kode]
+        detail.tanggal_kembali = tanggal
+        detail.kondisi_kembali = kondisi 
+        detail.terlambat = tanggal > self.batas_kembali
+
+        self.status = status_selesai if not self.belum_kembali() else status_sebagian
+        return detail
