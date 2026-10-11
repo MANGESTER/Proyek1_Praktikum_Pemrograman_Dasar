@@ -15,7 +15,7 @@ class DetailPinjam:
         self.terlambar = False
 
     @property
-    def sudah_dikembalikan(self):
+    def sudah_kembali(self):
         return self.tanggal_kembali is not None
 
 class Transaksi:
@@ -32,14 +32,14 @@ class Transaksi:
         return self.status != status_selesai
 
     def belum_kembali(self):
-        return [k for k, d in self.items.items() if not d.sudah_dikembalikan]
+        return [k for k, d in self.items.items() if not d.sudah_kembali]
 
     def validasi_pengembalian(self, kode, kondisi, tanggal):
         detail = self.items.get(kode)
 
         if detail is None:
             raise DataTidakDitemukanError(f'Alat {kode} tidak ada diriwayat transaksi {self.id}.')
-        if detail.sudah_dikembalikan:
+        if detail.sudah_kembali:
             raise AturanBisnisError(f'Alat {kode} sudah dikembalikan sebelumnya.')
 
         cek_kondisi(kondisi)
