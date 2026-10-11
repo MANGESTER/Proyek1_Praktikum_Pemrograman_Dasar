@@ -1,5 +1,5 @@
-from models.alat import (KONDISI_BAIK, STATUS_DIPINJAM, STATUS_PEMELIHARAAN, STATUS_RUSAK,
-                         STATUS_TERSEDIA, Alat)
+from models.alat import (Kondisi_Baik, Status_Dipinjam, Status_Pemeliharaan, Status_Rusak,
+                         Status_Tersedia, Alat)
 from models.exceptions import AturanBisnisError, DataSudahAdaError, DataTidakDitemukanError, ValidasiError
 from utils.validasi import wajib
 
@@ -30,14 +30,13 @@ class AlatService:
         self._log.catat(f"Kategori '{nama}' ditambahkan")
         return nama
 
-    # ---- CRUD ----
-    def tambah(self, kode, nama, kategori, kondisi=KONDISI_BAIK):
+    def tambah(self, kode, nama, kategori, kondisi=Kondisi_Baik):
         kode = wajib(kode, "Kode alat").upper()
         nama = wajib(nama, "Nama alat")
         kategori = wajib(kategori, "Kategori").lower()
         if kode in self._data:
             raise DataSudahAdaError(f"Kode alat {kode} sudah terdaftar.")
-        self._kategori.add(kategori)  # kategori baru otomatis terdaftar
+        self._kategori.add(kategori)
         self._data[kode] = Alat(kode, nama, kategori, kondisi)
         self._log.catat(f"Alat {kode} ({nama}) ditambahkan")
         return self._data[kode]
@@ -61,7 +60,7 @@ class AlatService:
     def hapus(self, kode):
         """Aturan 6: alat yang masih ada di transaksi aktif tidak boleh dihapus."""
         alat = self.ambil(kode)
-        if alat.status == STATUS_DIPINJAM:
+        if alat.status == Status_Dipinjam:
             raise AturanBisnisError(
                 f"Alat {alat.kode} masih tercatat di transaksi aktif {alat.transaksi_aktif}; tidak dapat dihapus."
             )
@@ -97,16 +96,16 @@ class AlatService:
         return list(self._data.values())
 
     def daftar_tersedia(self):
-        return self._filter(STATUS_TERSEDIA)
+        return self._filter(Status_Tersedia)
 
     def daftar_dipinjam(self):
-        return self._filter(STATUS_DIPINJAM)
+        return self._filter(Status_Dipinjam)
 
     def daftar_rusak(self):
-        return self._filter(STATUS_RUSAK)
+        return self._filter(Status_Rusak)
 
     def daftar_pemeliharaan(self):
-        return self._filter(STATUS_PEMELIHARAAN)
+        return self._filter(Status_Pemeliharaan)
 
     # ---- pemeliharaan (Tantangan C) ----
     def kirim_ke_pemeliharaan(self, kode):
