@@ -1,7 +1,7 @@
 from datetime import date
 
 from models.exceptions import (AturanBisnisError, DataTidakDitemukanError, ValidasiError)
-from models.transaksi import MAKS_HARI, Transaksi
+from models.transaksi import max_hari, Transaksi
 
 
 class TransaksiService:
@@ -21,11 +21,11 @@ class TransaksiService:
         self._per_mahasiswa = {}
         self._urut = 0
 
-    def buat(self, nim, daftar_kode, lama_hari=MAKS_HARI, tanggal=None):
+    def buat(self, nim, daftar_kode, lama_hari=max_hari, tanggal=None):
         tanggal = tanggal or date.today()
         mhs = self._mhs.ambil(nim)
-        if not 1 <= lama_hari <= MAKS_HARI:
-            raise ValidasiError(f"Lama peminjaman harus 1-{MAKS_HARI} hari.")
+        if not 1 <= lama_hari <= max_hari:
+            raise ValidasiError(f"Lama peminjaman harus 1-{max_hari} hari.")
         kode_list = list(dict.fromkeys(k.strip().upper() for k in daftar_kode if k.strip()))
         if not kode_list:
             raise ValidasiError("Minimal satu alat harus dipilih.")
