@@ -1,220 +1,188 @@
-from datetime import date, datetime
-
-from data_contoh import muat_data_contoh
-from models.alat import Kondisi_Valid
-from models.exceptions import LabError, ValidasiError
-from models.transaksi import max_hari
-
+"""MenuCLI: hanya menangani input/output. Logika bisnis ada di services/."""
+import data_contoh
+from models.enums import KondisiAlat
+from models.exceptions import LabError
+from models.transaksi import MAKS_HARI
+from utils.validasi import parse_angka, parse_tanggal
 
 class MenuCLI:
-    """Lapisan antarmuka: hanya membaca input & mencetak. Logika ada di services."""
-
-    def __init__(self, mahasiswa, alat, transaksi, statistik, log):
-        self.mhs, self.alat, self.trx, self.stat, self.log = mahasiswa, alat, transaksi, statistik, log
-        self._aksi = {
-            "1": self.kelola_mahasiswa, "2": self.kelola_alat, "3": self.buat_transaksi,
-            "4": self.tampil_transaksi, "5": self.proses_pengembalian, "6": self.cari_transaksi,
-            "7": lambda: self._cetak(self.alat.daftar_tersedia(), "Alat tersedia"),
-            "8": lambda: self._cetak(self.alat.daftar_dipinjam(), "Alat sedang dipinjam"),
-            "9": lambda: self._cetak(self.alat.daftar_rusak(), "Alat rusak"),
-            "10": self.riwayat_mahasiswa, "11": self.cari_alat, "12": self.pemeliharaan,
-            "13": self.statistik, "14": self.tampil_log, "15": self.kelola_kategori,
-            "16": self.data_contoh,
+    def __init__(self, mahasiswa_service, alat_service, transaksi_service, log_service, statistik_service):
+        self.ms = mahasiswa_service
+        self.als = alat_service
+        self.ts = transaksi_service
+        self.log = log_service
+        self.stat = statistik_service
+        self.menu = {
+            "1": ("Kelola data mahasiswa", self.kelola_mahasiswa),
+            "2": ("Kelola data alat", self.kelola_alat),
+            "3": ("Buat transaksi peminjaman", self.buat_transaksi),
+            "4": ("Tampilkan transaksi", self.tampil_transaksi),
+            "5": ("Proses pengembalian alat", self.pengembalian),
+            "6": ("Cari transaksi berdasarkan mahasiswa", self.cari_transaksi),
+            "7": ("Tampilkan alat yang tersedia", lambda: self._cetak(self.als.tersedia())),
+            "8": ("Tampilkan alat yang sedang dipinjam", lambda: self._cetak(self.als.dipinjam())),
+            "9": ("Tampilkan alat yang rusak", lambda: self._cetak(self.als.rusak())),
+            "10": ("Tampilkan riwayat peminjaman mahasiswa", self.riwayat),
+            "11": ("[A] Cari alat (kode / nama / kategori)", self.cari_alat),
+            "12": ("[B] Statistik peminjaman", self.statistik),
+            "13": ("[C] Pemeliharaan alat", self.pemeliharaan),
+            "14": ("[D] Log aktivitas", self.log.tampilkan),
+            "15": ("Tampilkan transaksi terlambat", self.terlambat),
+            "16": ("Muat data contoh", self.muat_contoh),
+            "0": ("Keluar", None),
         }
 
-    def _nama_mhs(self, nim):
-        try:
-            return self.mhs.ambil(nim).nama
-        except LabError:
-            return "(sudah dihapus)"
-
-    def _nama_alat(self, kode):
-        try:
-            return self.alat.ambil(kode).nama
-        except LabError:
-            return "(alat sudah dihapus)"
-
+    # ---------- helper I/O ----------
     @staticmethod
-    def _tanya(label):
+    def _input(label):
         return input(f"{label}: ").strip()
 
     @staticmethod
-    def _tanya_tanggal():
-        teks = input("Tanggal (YYYY-MM-DD, kosong = hari ini): ").strip()
-        if not teks:
-            return date.today()
-        try:
-            return datetime.strptime(teks, "%Y-%m-%d").date()
-        except ValueError:
-            raise ValidasiError("Format tanggal harus YYYY-MM-DD.")
-
-    @staticmethod
-    def _cetak(daftar, judul):
-        print(f"\n== {judul} ({len(daftar)}) ==")
+    def _cetak(daftar, kosong="(Tidak ada data)"):
         if not daftar:
-            print("(kosong)")
+            print(kosong)
         for item in daftar:
-            print(" -", item)
+            print(item)
 
-    def _cetak_transaksi(self, daftar, judul):
-        print(f"\n== {judul} ({len(daftar)}) ==")
-        if not daftar:
-            print("(kosong)")
-        for t in daftar:
-            print(f"\n{t.id} | {t.nim} ({self._nama_mhs(t.nim)}) | pinjam {t.tanggal_pinjam} | batas {t.batas_kembali} | {t.status.upper()}")
-            for kode, d in t.items.items():
-                if d.sudah_kembali:
-                    tl = " TERLAMBAT" if d.terlambat else ""
-                    info = f"kembali {d.tanggal_kembali}, kondisi {d.kondisi_kembali}{tl}"
-                else:
-                    info = "masih dipinjam"
-                print(f"    - {kode} {self._nama_alat(kode)}: {info}")
+    def _pilih_kondisi(self, label="Kondisi (baik/rusak ringan/rusak berat)"):
+        return KondisiAlat.dari_teks(self._input(label))
 
-    def _pilih_kondisi(self):
-        for i, k in enumerate(Kondisi_Valid, 1):
-            print(f"  {i}. {k}")
-        pilihan = self._tanya("Pilih kondisi (nomor)")
-        if not pilihan.isdigit() or not 1 <= int(pilihan) <= len(Kondisi_Valid):
-            raise ValidasiError("Pilihan kondisi tidak valid.")
-        return Kondisi_Valid[int(pilihan) - 1]
+    # ---------- loop utama ----------
+    def tampilkan_menu(self):
+        print("\n=== SISTEM PEMINJAMAN PERALATAN LABORATORIUM ===")
+        for kode, (judul, _) in self.menu.items():
+            if kode != "0":
+                print(f"{kode:>3}. {judul}")
+        print("  0. Keluar")
 
-    def jalan(self):
+    def jalankan(self):
         while True:
-            print("""
-=== SISTEM PEMINJAMAN PERALATAN LABORATORIUM ===
- 1. Kelola data mahasiswa        9. Tampilkan alat rusak
- 2. Kelola data alat            10. Riwayat peminjaman mahasiswa
- 3. Buat transaksi peminjaman   11. Cari alat (kode/nama/kategori)
- 4. Tampilkan transaksi         12. Pemeliharaan alat
- 5. Proses pengembalian alat    13. Statistik peminjaman
- 6. Cari transaksi (mahasiswa)  14. Log aktivitas
- 7. Tampilkan alat tersedia     15. Kelola kategori alat
- 8. Tampilkan alat dipinjam     16. Muat data contoh
- 0. Keluar""")
-            pilihan = self._tanya("Pilih menu")
+            self.tampilkan_menu()
+            pilihan = self._input("Pilih menu")
             if pilihan == "0":
                 print("Terima kasih.")
-                return
-            aksi = self._aksi.get(pilihan)
-            if aksi is None:
-                print("[!] Menu tidak dikenal.")
+                break
+            if pilihan not in self.menu:
+                print("Menu tidak valid.")
                 continue
             try:
-                aksi()
-            except LabError as e:
-                print(f"[!] {e}")
+                self.menu[pilihan][1]()
+            except (LabError, ValueError) as e:
+                print(f"Gagal: {e}")
+            except (KeyboardInterrupt, EOFError):
+                print("\nDibatalkan.")
 
+    # ---------- mahasiswa ----------
     def kelola_mahasiswa(self):
-        print("\n1.Tambah 2.Edit 3.Hapus 4.Cari 5.Lihat semua")
-        p = self._tanya("Pilih")
-        if p == "1":
-            m = self.mhs.tambah(self._tanya("NIM"), self._tanya("Nama"), self._tanya("No HP"))
-            print("Ditambahkan:", m)
-        elif p == "2":
-            nim = self._tanya("NIM yang diedit")
-            print("(kosongkan bila tidak diubah)")
-            print("Diubah:", self.mhs.edit(nim, self._tanya("Nama baru"), self._tanya("No HP baru")))
-        elif p == "3":
-            self.mhs.hapus(self._tanya("NIM yang dihapus"))
+        print("a. Tambah  b. Edit  c. Hapus  d. Cari  e. Tampilkan semua")
+        p = self._input("Pilih").lower()
+        if p == "a":
+            m = self.ms.tambah(self._input("NIM"), self._input("Nama"), self._input("No HP"))
+            print("Berhasil ditambahkan:", m)
+        elif p == "b":
+            nim = self._input("NIM")
+            m = self.ms.edit(nim, self._input("Nama baru (kosong = tetap)") or None,
+                             self._input("No HP baru (kosong = tetap)") or None)
+            print("Berhasil diubah:", m)
+        elif p == "c":
+            self.ms.hapus(self._input("NIM"))
             print("Mahasiswa dihapus.")
-        elif p == "4":
-            self._cetak(self.mhs.cari(self._tanya("NIM / nama")), "Hasil pencarian")
-        elif p == "5":
-            self._cetak(self.mhs.semua(), "Semua mahasiswa")
+        elif p == "d":
+            self._cetak(self.ms.cari(self._input("Kata kunci (NIM/nama)")))
+        elif p == "e":
+            self._cetak(self.ms.semua())
+        else:
+            print("Pilihan tidak valid.")
 
+    # ---------- alat ----------
     def kelola_alat(self):
-        print("\n1.Tambah 2.Edit 3.Hapus 4.Cari 5.Lihat semua")
-        p = self._tanya("Pilih")
-        if p == "1":
-            print("Kategori tersedia:", ", ".join(self.alat.daftar_kategori()), "(boleh ketik kategori baru)")
-            kode, nama, kat = self._tanya("Kode alat"), self._tanya("Nama alat"), self._tanya("Kategori")
-            print("Kondisi awal:")
-            a = self.alat.tambah(kode, nama, kat, self._pilih_kondisi())
-            print("Ditambahkan:", a)
-        elif p == "2":
-            kode = self._tanya("Kode alat yang diedit")
-            print("(kosongkan bila tidak diubah)")
-            print("Diubah:", self.alat.edit(kode, self._tanya("Nama baru"), self._tanya("Kategori baru")))
-        elif p == "3":
-            self.alat.hapus(self._tanya("Kode alat yang dihapus"))
+        print("a. Tambah  b. Edit  c. Hapus  d. Cari  e. Tampilkan semua")
+        p = self._input("Pilih").lower()
+        if p == "a":
+            kode, nama = self._input("Kode"), self._input("Nama")
+            if self.als.kategori:
+                print("Kategori yang ada:", ", ".join(k.nama for k in self.als.kategori.values()))
+            kategori = self._input("Kategori (boleh kategori baru)")
+            kondisi = KondisiAlat.dari_teks(self._input("Kondisi awal [baik]") or "baik")
+            print("Berhasil ditambahkan:", self.als.tambah(kode, nama, kategori, kondisi))
+        elif p == "b":
+            kode = self._input("Kode")
+            a = self.als.edit(kode, self._input("Nama baru (kosong = tetap)") or None,
+                              self._input("Kategori baru (kosong = tetap)") or None)
+            print("Berhasil diubah:", a)
+        elif p == "c":
+            self.als.hapus(self._input("Kode"))
             print("Alat dihapus.")
-        elif p == "4":
+        elif p == "d":
             self.cari_alat()
-        elif p == "5":
-            self._cetak(self.alat.semua(), "Semua alat")
+        elif p == "e":
+            self._cetak(self.als.semua())
+        else:
+            print("Pilihan tidak valid.")
 
     def cari_alat(self):
-        print("Cari berdasarkan: 1.Kode 2.Nama 3.Kategori 4.Semua")
-        mode = {"1": "kode", "2": "nama", "3": "kategori", "4": "semua"}.get(self._tanya("Pilih"))
-        if mode is None:
-            raise ValidasiError("Pilihan tidak valid.")
-        self._cetak(self.alat.cari(self._tanya("Kata kunci"), mode), "Hasil pencarian alat")
+        self._cetak(self.als.cari(self._input("Kata kunci (kode/nama/kategori)")))
 
-    def kelola_kategori(self):
-        print("Kategori saat ini:", ", ".join(self.alat.daftar_kategori()))
-        baru = self._tanya("Kategori baru (kosong = batal)")
-        if baru:
-            print("Kategori ditambahkan:", self.alat.tambah_kategori(baru))
-
-    def pemeliharaan(self):
-        self._cetak(self.alat.daftar_rusak(), "Alat rusak (belum dipelihara)")
-        self._cetak(self.alat.daftar_pemeliharaan(), "Alat dalam pemeliharaan")
-        print("\n1.Kirim ke pemeliharaan 2.Selesai diperbaiki")
-        p = self._tanya("Pilih")
-        if p == "1":
-            print("Dimasukkan:", self.alat.kirim_ke_pemeliharaan(self._tanya("Kode alat")))
-        elif p == "2":
-            print("Kembali tersedia:", self.alat.selesai_pemeliharaan(self._tanya("Kode alat")))
-
+    # ---------- transaksi ----------
     def buat_transaksi(self):
-        self._cetak(self.alat.daftar_tersedia(), "Alat tersedia")
-        nim = self._tanya("NIM peminjam")
-        kode = self._tanya("Kode alat (pisahkan dengan koma)").split(",")
-        lama = self._tanya(f"Lama pinjam hari (1-{max_hari}, kosong = {max_hari})")
-        if lama and not lama.isdigit():
-            raise ValidasiError("Lama pinjam harus berupa angka.")
-        trx = self.trx.buat(nim, kode, int(lama) if lama else max_hari)
-        print(f"Transaksi {trx.id} berhasil dibuat. Batas kembali: {trx.batas_kembali}")
+        nim = self._input("NIM mahasiswa")
+        kode = self._input("Kode alat (pisahkan dengan koma)").split(",")
+        lama = parse_angka(self._input(f"Lama pinjam (1-{MAKS_HARI} hari) [{MAKS_HARI}]") or MAKS_HARI, "Lama pinjam")
+        t = self.ts.buat_transaksi(nim, kode, lama)
+        print("Transaksi berhasil dibuat:\n" + str(t))
 
     def tampil_transaksi(self):
-        self._cetak_transaksi(self.trx.semua(), "Semua transaksi")
+        self._cetak(self.ts.semua(), "(Belum ada transaksi)")
 
-    def proses_pengembalian(self):
-        id_trx = self._tanya("ID transaksi")
-        trx = self.trx.ambil(id_trx)
-        print("Alat yang belum kembali:", ", ".join(trx.belum_kembali()) or "-")
+    def pengembalian(self):
+        t = self.ts.ambil(self._input("ID transaksi"))
+        print(t)
+        belum = [d.alat.kode for d in t.alat_belum_kembali()]
+        print("Belum kembali:", ", ".join(belum) or "-")
         pengembalian = {}
-        while True:
-            kode = self._tanya("Kode alat yang dikembalikan (kosong = selesai input)")
-            if not kode:
-                break
-            pengembalian[kode] = self._pilih_kondisi()
-        tanggal = self._tanya_tanggal()
-        self.trx.kembalikan(id_trx, pengembalian, tanggal)
-        print(f"Pengembalian dicatat. Status transaksi: {trx.status}")
+        for kode in self._input("Kode alat yang dikembalikan (pisahkan koma)").split(","):
+            kode = kode.strip()
+            if kode:
+                pengembalian[kode] = self._pilih_kondisi(f"Kondisi {kode} (baik/rusak ringan/rusak berat)")
+        tgl = self._input("Tanggal kembali YYYY-MM-DD (kosong = hari ini)")
+        t = self.ts.proses_pengembalian(t.id_transaksi, pengembalian, parse_tanggal(tgl) if tgl else None)
+        print("Pengembalian diproses:\n" + str(t))
 
     def cari_transaksi(self):
-        self._cetak_transaksi(self.trx.cari_by_mahasiswa(self._tanya("NIM / nama mahasiswa")), "Transaksi mahasiswa")
+        self._cetak(self.ts.cari_berdasarkan_mahasiswa(self._input("NIM / nama mahasiswa")))
 
-    def riwayat_mahasiswa(self):
-        self._cetak_transaksi(self.trx.riwayat(self._tanya("NIM")), "Riwayat peminjaman")
+    def riwayat(self):
+        self._cetak(self.ts.riwayat_mahasiswa(self._input("NIM mahasiswa")), "(Belum ada riwayat)")
 
+    def terlambat(self):
+        self._cetak(self.ts.terlambat(), "(Tidak ada transaksi terlambat)")
+
+    # ---------- tantangan ----------
     def statistik(self):
-        print("\n== Statistik Peminjaman ==")
+        r = self.stat.ringkasan()
         print("Alat paling sering dipinjam:")
-        for kode, n in self.stat.alat_terbanyak():
-            print(f"  - {kode} {self._nama_alat(kode)}: {n}x")
+        for alat, jml in r["alat_terpopuler"] or []:
+            print(f"  {alat.kode} {alat.nama}: {jml}x")
         print("Mahasiswa paling sering meminjam:")
-        for nim, n in self.stat.mahasiswa_terbanyak():
-            print(f"  - {nim} {self._nama_mhs(nim)}: {n} transaksi")
-        print(f"Transaksi selesai: {self.stat.jumlah_selesai()} | aktif: {self.stat.jumlah_aktif()}")
+        for m, jml in r["mahasiswa_teraktif"] or []:
+            print(f"  {m.nim} {m.nama}: {jml} transaksi")
+        print(f"Transaksi selesai: {r['transaksi_selesai']}")
+        print(f"Transaksi aktif  : {r['transaksi_aktif']}")
 
-    def tampil_log(self):
-        baris = self.log.format_baris()
-        print(f"\n== Log Aktivitas ({len(baris)}) ==")
-        for b in baris:
-            print(b)
+    def pemeliharaan(self):
+        print("a. Kirim alat rusak ke pemeliharaan  b. Selesai diperbaiki  c. Lihat daftar")
+        p = self._input("Pilih").lower()
+        if p == "a":
+            self.als.kirim_pemeliharaan(self._input("Kode alat"))
+            print("Alat masuk daftar pemeliharaan.")
+        elif p == "b":
+            self.als.selesai_perbaikan(self._input("Kode alat"))
+            print("Alat kembali tersedia.")
+        elif p == "c":
+            self._cetak(self.als.daftar_pemeliharaan(), "(Tidak ada alat dalam pemeliharaan)")
+        else:
+            print("Pilihan tidak valid.")
 
-    def data_contoh(self):
-        muat_data_contoh(self.mhs, self.alat)
-        print("Data contoh dimuat (4 mahasiswa, 8 alat).")
+    def muat_contoh(self):
+        n = data_contoh.muat(self.ms, self.als)
+        print(f"{n} data contoh dimuat.")

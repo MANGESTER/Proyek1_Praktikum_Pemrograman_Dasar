@@ -1,17 +1,16 @@
+"""Tantangan D: log aktivitas (disimpan dalam list of dict)."""
 from datetime import datetime
 
-
 class LogService:
-    """Tantangan D: log aktivitas disimpan dalam list of dict."""
-
     def __init__(self):
-        self._entries = []
+        self.entri = []  # list of {"waktu": datetime, "pesan": str}
 
-    def catat(self, pesan):
-        self._entries.append({"waktu": datetime.now().strftime("%Y-%m-%d %H:%M"), "pesan": pesan})
+    def catat(self, pesan, waktu=None):
+        self.entri.append({"waktu": waktu or datetime.now(), "pesan": pesan})
 
     def semua(self):
-        return list(self._entries)
+        return [f"[{e['waktu'].strftime('%Y-%m-%d %H:%M')}] {e['pesan']}" for e in self.entri]
 
-    def format_baris(self):
-        return [f"[{e['waktu']}] {e['pesan']}" for e in self._entries]
+    def tampilkan(self):
+        baris = self.semua()
+        print("\n".join(baris) if baris else "(Belum ada aktivitas)")
