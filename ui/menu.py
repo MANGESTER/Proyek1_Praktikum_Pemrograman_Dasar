@@ -1,9 +1,9 @@
 from datetime import date, datetime
 
 from data_contoh import muat_data_contoh
-from models.alat import KONDISI_VALID
+from models.alat import Kondisi_Valid
 from models.exceptions import LabError, ValidasiError
-from models.transaksi import MAKS_HARI
+from models.transaksi import max_hari
 
 
 class MenuCLI:
@@ -71,12 +71,12 @@ class MenuCLI:
                 print(f"    - {kode} {self._nama_alat(kode)}: {info}")
 
     def _pilih_kondisi(self):
-        for i, k in enumerate(KONDISI_VALID, 1):
+        for i, k in enumerate(Kondisi_Valid, 1):
             print(f"  {i}. {k}")
         pilihan = self._tanya("Pilih kondisi (nomor)")
-        if not pilihan.isdigit() or not 1 <= int(pilihan) <= len(KONDISI_VALID):
+        if not pilihan.isdigit() or not 1 <= int(pilihan) <= len(Kondisi_Valid):
             raise ValidasiError("Pilihan kondisi tidak valid.")
-        return KONDISI_VALID[int(pilihan) - 1]
+        return Kondisi_Valid[int(pilihan) - 1]
 
     def jalan(self):
         while True:
@@ -170,10 +170,10 @@ class MenuCLI:
         self._cetak(self.alat.daftar_tersedia(), "Alat tersedia")
         nim = self._tanya("NIM peminjam")
         kode = self._tanya("Kode alat (pisahkan dengan koma)").split(",")
-        lama = self._tanya(f"Lama pinjam hari (1-{MAKS_HARI}, kosong = {MAKS_HARI})")
+        lama = self._tanya(f"Lama pinjam hari (1-{max_hari}, kosong = {max_hari})")
         if lama and not lama.isdigit():
             raise ValidasiError("Lama pinjam harus berupa angka.")
-        trx = self.trx.buat(nim, kode, int(lama) if lama else MAKS_HARI)
+        trx = self.trx.buat(nim, kode, int(lama) if lama else max_hari)
         print(f"Transaksi {trx.id} berhasil dibuat. Batas kembali: {trx.batas_kembali}")
 
     def tampil_transaksi(self):

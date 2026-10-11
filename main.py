@@ -2,7 +2,7 @@ from services.alat_service import AlatService
 from services.log_service import LogService
 from services.mahasiswa_service import MahasiswaService
 from services.statistik_service import StatistikService
-from services.transaction_services import TransaksiService
+from services.transaksi_service import TransaksiService
 from ui.menu import MenuCLI
 
 
