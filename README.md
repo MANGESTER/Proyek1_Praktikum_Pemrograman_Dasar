@@ -1,4 +1,4 @@
-# Praktikum Pemrograman 
+# Praktikum Pemrograman Dasar
 
 # Sistem Pengelolaan Peminjaman Peralatan Laboratorium
 
@@ -8,7 +8,7 @@ dan pengembalian alat laboratorium. Data disimpan sementara di `list`/`dict`/`se
 ## Anggota Kelompok
 | Nama | Peran utama |
 |---|---|
-| Mahardika | Model (`models/`), UML final |
+| Dika | Model (`models/`), UML final |
 | Abyan | `TransaksiService`, pengujian skenario peminjaman/pengembalian |
 | Ayun | `MahasiswaService`, `AlatService`, Tantangan A & C |
 | Adibah | `MenuCLI`, `main.py`, `LogService`, `StatistikService`, dokumentasi |
@@ -26,6 +26,7 @@ Aturan bisnis yang diterapkan:
 Tantangan yang dikerjakan: **A** pencarian fleksibel, **B** statistik, **C** pemeliharaan, **D** log aktivitas.
 
 ## Struktur Program
+```
 lab_peminjaman/
 ├── main.py                  # titik masuk
 ├── data_contoh.py           # data contoh (menu 16)
@@ -35,6 +36,7 @@ lab_peminjaman/
 ├── utils/validasi.py
 ├── tests/test_skenario.py   # unit test skenario 1-6 + tantangan
 └── docs/                    # UML, keputusan desain, pengujian, code review, refleksi, pembagian tugas
+```
 
 ## Cara Menjalankan
 Butuh Python 3.8+ (tanpa library tambahan).
@@ -42,8 +44,9 @@ Butuh Python 3.8+ (tanpa library tambahan).
 python main.py                    # jalankan aplikasi (menu 16 = muat data contoh)
 python -m unittest discover -v    # jalankan seluruh pengujian
 ```
+
 ## Pembagian Kontribusi
 Lihat [`docs/pembagian_tugas.md`](docs/pembagian_tugas.md). Setiap anggota commit memakai akun GitHub masing-masing.
 
 ## Dokumentasi
-`docs/uml_final.drawio` · `docs/uml_final.md` · `docs/desain_keputusan.md` · `docs/hasil_pengujian.md` · `docs/code_review.md` · `docs/refleksi.md`
+`docs/penjelasan_kode_per_anggota.md` · `docs/penjelasan_baris_0_indeks.md` (penjelasan kode per baris) · `docs/uml_final.drawio` · `docs/uml_final.md` · `docs/desain_keputusan.md` · `docs/hasil_pengujian.md` · `docs/code_review.md` · `docs/refleksi.md`
