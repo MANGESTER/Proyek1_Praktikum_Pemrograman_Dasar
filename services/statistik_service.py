@@ -1,20 +1,26 @@
+from collections import Counter
+
+
 class StatistikService:
-    def __init__(self, mahasiswa_service, alat_service, transaksi_service):
-        self._mhs = mahasiswa_service
-        self._alat = alat_service
-        self._transaksi = transaksi_service
+    """Tantangan B: statistik peminjaman (dihitung dari data transaksi)."""
 
-    def jumlah_transaksi(self):
-        return len(self._transaksi.semua())
+    def __init__(self, transaksi_service):
+        self._trx = transaksi_service
 
-    def jumlah_transaksi_aktif(self):
-        return len(self._transaksi.aktif())
+    @staticmethod
+    def _teratas(counter, n):
+        return counter.most_common(n)
 
-    def jumlah_transaksi_selesai(self):
-        return len(self._transaksi.selesai())
+    def alat_terbanyak(self, n=3):
+        c = Counter(kode for t in self._trx.semua() for kode in t.items)
+        return self._teratas(c, n)
 
-    def tampilkan(self):
-        print("\n=== STATISTIK SISTEM ===")
-        print(f"Jumlah transaksi : {self.jumlah_transaksi()}")
-        print(f"Transaksi aktif  : {self.jumlah_transaksi_aktif()}")
-        print(f"Transaksi selesai: {self.jumlah_transaksi_selesai()}")
+    def mahasiswa_terbanyak(self, n=3):
+        c = Counter(t.nim for t in self._trx.semua())
+        return self._teratas(c, n)
+
+    def jumlah_selesai(self):
+        return len(self._trx.selesai())
+
+    def jumlah_aktif(self):
+        return len(self._trx.aktif())
