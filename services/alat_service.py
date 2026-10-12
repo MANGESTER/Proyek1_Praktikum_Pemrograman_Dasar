@@ -1,9 +1,10 @@
 from models.alat import (Kondisi_Baik, Status_Dipinjam, Status_Pemeliharaan, Status_Rusak,
                          Status_Tersedia, Alat)
 from models.exceptions import AturanBisnisError, DataSudahAdaError, DataTidakDitemukanError, ValidasiError
-from utils.validasi import wajib_isi as wajib
+from utils.validasi import wajib
 
 KATEGORI_AWAL = ("perangkat komputasi", "perangkat jaringan", "perangkat multimedia")
+
 
 class AlatService:
     """CRUD alat + pencarian + pemeliharaan. Data: dict {kode: Alat}.
